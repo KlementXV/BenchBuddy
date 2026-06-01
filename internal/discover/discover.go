@@ -33,6 +33,7 @@ func Run(ctx context.Context, cs kubernetes.Interface) (Discovery, error) {
 	if err != nil {
 		return d, fmt.Errorf("list nodes: %w", err)
 	}
+	var tainted []string
 	for _, n := range nodes.Items {
 		if n.Spec.Unschedulable {
 			continue
@@ -44,9 +45,19 @@ func Run(ctx context.Context, cs kubernetes.Interface) (Discovery, error) {
 				break
 			}
 		}
-		if ready {
-			d.Nodes = append(d.Nodes, n.Name)
+		if !ready {
+			continue
 		}
+		if hasBlockingTaint(n.Spec.Taints) {
+			tainted = append(tainted, n.Name)
+			continue
+		}
+		d.Nodes = append(d.Nodes, n.Name)
+	}
+	// Fallback: if every Ready node is tainted (e.g. single-node k3s where the
+	// control-plane is also the worker), use them rather than planning zero tasks.
+	if len(d.Nodes) == 0 && len(tainted) > 0 {
+		d.Nodes = tainted
 	}
 	sort.Strings(d.Nodes)
 
@@ -61,6 +72,17 @@ func Run(ctx context.Context, cs kubernetes.Interface) (Discovery, error) {
 
 	d.CNI = detectCNI(ctx, cs)
 	return d, nil
+}
+
+// hasBlockingTaint reports whether any taint would prevent a default
+// (no-tolerations) pod from scheduling on the node.
+func hasBlockingTaint(taints []corev1.Taint) bool {
+	for _, t := range taints {
+		if t.Effect == corev1.TaintEffectNoSchedule || t.Effect == corev1.TaintEffectNoExecute {
+			return true
+		}
+	}
+	return false
 }
 
 // detectCNI scans kube-system DaemonSets and Pods for well-known CNI names.

@@ -13,7 +13,7 @@ func TestMerge_DefaultsOnly(t *testing.T) {
 	if got.Profile != "quick" {
 		t.Errorf("profile: %q", got.Profile)
 	}
-	if got.Parallelism != 3 {
+	if got.Parallelism != 5 {
 		t.Errorf("parallelism: %d", got.Parallelism)
 	}
 	if got.Benches.Network.Duration != 10*time.Second {

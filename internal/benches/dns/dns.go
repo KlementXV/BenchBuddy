@@ -91,7 +91,7 @@ func (b *Bench) Run(ctx context.Context, kc *kube.Client, runID string, t benche
 		ccx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		_ = cs.CoreV1().Pods(ns).DeleteCollection(ccx, metav1.DeleteOptions{},
-			metav1.ListOptions{LabelSelector: labels.RunIDKey + "=" + runID + ",benchbuddy.io/bench=dns"})
+			metav1.ListOptions{LabelSelector: labels.SelectorForTask(runID, t.ID)})
 	}
 	defer cleanup()
 

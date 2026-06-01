@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/clementlevoux/benchbuddy/internal/advisor"
 	"github.com/clementlevoux/benchbuddy/internal/benches/api"
@@ -312,7 +313,7 @@ func parseOutputs(flags []string) (jsonPath, mdPath string, err error) {
 // podLogReader returns a LogReader backed by the real clientset.
 func podLogReader(kc *kube.Client) network.LogReader {
 	return func(ctx context.Context, namespace, podName string) ([]byte, error) {
-		req := kc.Clientset().CoreV1().Pods(namespace).GetLogs(podName, nil)
+		req := kc.Clientset().CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{})
 		rc, err := req.Stream(ctx)
 		if err != nil {
 			return nil, err

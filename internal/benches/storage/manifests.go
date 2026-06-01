@@ -11,15 +11,17 @@ import (
 	"github.com/clementlevoux/benchbuddy/internal/labels"
 )
 
-// PVC builds a PersistentVolumeClaim manifest for the storage bench.
-func PVC(runID, namespace, storageClass, size string) *corev1.PersistentVolumeClaim {
+// PVC builds a PersistentVolumeClaim manifest for the storage bench. The name
+// must be unique per task (pattern + block size) so concurrent or sequential
+// tasks against the same StorageClass don't collide on the same PVC.
+func PVC(runID, namespace, storageClass, pattern, blockSize, size string) *corev1.PersistentVolumeClaim {
 	qty := resource.MustParse(size)
 	scName := storageClass
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("bb-storage-%s-%s", sanitize(storageClass), shortID(runID)),
+			Name:      fmt.Sprintf("bb-storage-%s-%s-%s-%s", sanitize(storageClass), sanitize(pattern), sanitize(blockSize), shortID(runID)),
 			Namespace: namespace,
-			Labels:    labels.ForTask(runID, "storage", "storage/"+storageClass),
+			Labels:    labels.ForTask(runID, "storage", "storage/"+storageClass+"/"+pattern+"/"+blockSize),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
@@ -35,7 +37,7 @@ func PVC(runID, namespace, storageClass, size string) *corev1.PersistentVolumeCl
 
 // FioPod builds a Pod manifest that runs fio against the given PVC at /data.
 func FioPod(runID, namespace, pvcName string, spec StorageTaskSpec, cfg config.RunConfig) *corev1.Pod {
-	name := fmt.Sprintf("bb-storage-%s-%s-%s", sanitize(spec.Pattern), sanitize(spec.BlockSize), shortID(runID))
+	name := fmt.Sprintf("bb-storage-%s-%s-%s-%s", sanitize(spec.StorageClass), sanitize(spec.Pattern), sanitize(spec.BlockSize), shortID(runID))
 	lbls := labels.ForTask(runID, "storage", "storage/"+spec.StorageClass+"/"+spec.Pattern+"/"+spec.BlockSize)
 
 	args := []string{
@@ -78,13 +80,18 @@ func FioPod(runID, namespace, pvcName string, spec StorageTaskSpec, cfg config.R
 	}
 }
 
+// sanitize lowercases and strips characters that are invalid in a DNS-1123
+// subdomain (which Kubernetes resource names must respect).
 func sanitize(s string) string {
 	out := make([]byte, 0, len(s))
 	for i := 0; i < len(s); i++ {
 		c := s[i]
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' {
+		switch {
+		case c >= 'a' && c <= 'z', c >= '0' && c <= '9', c == '-':
 			out = append(out, c)
-		} else {
+		case c >= 'A' && c <= 'Z':
+			out = append(out, c+('a'-'A'))
+		default:
 			out = append(out, '-')
 		}
 	}

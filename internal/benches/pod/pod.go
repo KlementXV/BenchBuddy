@@ -88,7 +88,7 @@ func (b *Bench) runStartup(ctx context.Context, kc *kube.Client, runID string, t
 		ccx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		_ = cs.CoreV1().Pods(ns).DeleteCollection(ccx, metav1.DeleteOptions{},
-			metav1.ListOptions{LabelSelector: labels.RunIDKey + "=" + runID + ",benchbuddy.io/task=pod_startup"})
+			metav1.ListOptions{LabelSelector: labels.SelectorForTask(runID, t.ID)})
 	}
 	defer cleanup()
 
@@ -133,7 +133,7 @@ func (b *Bench) runCPU(ctx context.Context, kc *kube.Client, runID string, t ben
 		ccx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		_ = cs.CoreV1().Pods(ns).DeleteCollection(ccx, metav1.DeleteOptions{},
-			metav1.ListOptions{LabelSelector: labels.RunIDKey + "=" + runID + ",benchbuddy.io/task=pod_cpu"})
+			metav1.ListOptions{LabelSelector: labels.SelectorForTask(runID, t.ID)})
 	}
 	defer cleanup()
 

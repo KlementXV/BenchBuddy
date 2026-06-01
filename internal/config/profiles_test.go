@@ -13,8 +13,8 @@ func TestLoadProfile_Quick(t *testing.T) {
 	if p.Name != "quick" {
 		t.Errorf("name: got %q, want quick", p.Name)
 	}
-	if p.Parallelism != 3 {
-		t.Errorf("parallelism: got %d, want 3", p.Parallelism)
+	if p.Parallelism != 5 {
+		t.Errorf("parallelism: got %d, want 5", p.Parallelism)
 	}
 	if p.Benches.Network.Duration != 10*time.Second {
 		t.Errorf("network duration: got %v, want 10s", p.Benches.Network.Duration)
@@ -41,13 +41,13 @@ func TestLoadProfile_Quick_ExtendedBenches(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Benches.Storage.Duration != 15*time.Second {
+	if p.Benches.Storage.Duration != 10*time.Second {
 		t.Errorf("storage duration: %v", p.Benches.Storage.Duration)
 	}
 	if p.Benches.Storage.Size != "1Gi" {
 		t.Errorf("storage size: %q", p.Benches.Storage.Size)
 	}
-	if len(p.Benches.Storage.BlockSizes) != 2 {
+	if len(p.Benches.Storage.BlockSizes) != 1 {
 		t.Errorf("block sizes: %v", p.Benches.Storage.BlockSizes)
 	}
 	if p.Benches.DNS.QueriesPerSecond != 50 {

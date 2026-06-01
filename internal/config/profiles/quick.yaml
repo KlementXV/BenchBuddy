@@ -1,5 +1,5 @@
 name: quick
-parallelism: 3
+parallelism: 5
 timeout: 5m
 benches:
   network:
@@ -7,10 +7,10 @@ benches:
     protocols: [tcp, udp]
     combinations: [same-node, cross-node]
   storage:
-    duration: 15s
+    duration: 10s
     size: 1Gi
-    block_sizes: [4k, 1M]
-    patterns: [randread, randwrite, seqread, seqwrite]
+    block_sizes: [4k]
+    patterns: [randread, randwrite]
   dns:
     duration: 10s
     queries_per_second: 50

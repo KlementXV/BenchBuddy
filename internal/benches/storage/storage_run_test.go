@@ -38,7 +38,6 @@ func TestRun_HappyPath(t *testing.T) {
 			"BENCHBUDDY_RESULT: {\"iops\":{\"value\":12450,\"unit\":\"iops\"}," +
 			"\"latency_p99_us\":{\"value\":1820,\"unit\":\"us\"}}\n"), nil
 	})
-	b.pvcBoundTimeout = 1 * time.Second
 	b.podReadyTimeout = 1 * time.Second
 
 	cfg := config.RunConfig{

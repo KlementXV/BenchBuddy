@@ -64,6 +64,12 @@ func NewClient(opts Options) (*Client, error) {
 		return nil, errors.New("kubeconfig: no host configured")
 	}
 
+	// The default client-go rate limiter (5 QPS / 10 burst) is too low for
+	// BenchBuddy, which fans out many parallel create/get/watch calls across
+	// dozens of tasks. Bump it so tasks aren't starved waiting on the limiter.
+	cfg.QPS = 50
+	cfg.Burst = 100
+
 	cs, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("build clientset: %w", err)

@@ -24,13 +24,11 @@ type LogReader func(ctx context.Context, namespace, podName string) ([]byte, err
 
 type Bench struct {
 	logReader       LogReader
-	pvcBoundTimeout time.Duration
 	podReadyTimeout time.Duration
 }
 
 func New() *Bench {
 	return &Bench{
-		pvcBoundTimeout: 60 * time.Second,
 		podReadyTimeout: 120 * time.Second,
 	}
 }
@@ -106,7 +104,9 @@ func (b *Bench) Run(ctx context.Context, kc *kube.Client, runID string, t benche
 		cleaned = true
 		ccx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
-		sel := labels.RunIDKey + "=" + runID + ",benchbuddy.io/bench=storage"
+		// Scope to this task only — a bench-wide selector would delete pods/PVCs
+		// of other tasks running in parallel.
+		sel := labels.SelectorForTask(runID, t.ID)
 		_ = cs.CoreV1().Pods(ns).DeleteCollection(ccx, metav1.DeleteOptions{},
 			metav1.ListOptions{LabelSelector: sel})
 		_ = cs.CoreV1().PersistentVolumeClaims(ns).DeleteCollection(ccx, metav1.DeleteOptions{},
@@ -114,29 +114,27 @@ func (b *Bench) Run(ctx context.Context, kc *kube.Client, runID string, t benche
 	}
 	defer cleanup()
 
-	// 1. Create PVC.
-	pvc := PVC(runID, ns, spec.StorageClass, cfg.Benches.Storage.Size)
+	// 1. Create PVC. The PVC stays Pending until a consumer pod is scheduled
+	// when the StorageClass uses WaitForFirstConsumer (e.g. local-path), so we
+	// do not block here — pod creation below will trigger binding, and the pod
+	// completion wait covers both the bind and the fio run.
+	pvc := PVC(runID, ns, spec.StorageClass, spec.Pattern, spec.BlockSize, cfg.Benches.Storage.Size)
 	if _, err := cs.CoreV1().PersistentVolumeClaims(ns).Create(ctx, pvc, metav1.CreateOptions{}); err != nil {
 		return failed(t, "create pvc", err, start), nil
 	}
 
-	// 2. Wait for Bound.
-	if err := waitForPVCBound(ctx, cs, ns, pvc.Name, b.pvcBoundTimeout); err != nil {
-		return failed(t, "wait pvc bound", err, start), nil
-	}
-
-	// 3. Create Pod (mounts PVC).
+	// 2. Create Pod (mounts PVC).
 	pod := FioPod(runID, ns, pvc.Name, spec, cfg)
 	if _, err := cs.CoreV1().Pods(ns).Create(ctx, pod, metav1.CreateOptions{}); err != nil {
 		return failed(t, "create fio pod", err, start), nil
 	}
 
-	// 4. Wait for completion.
+	// 3. Wait for completion.
 	if err := waitForPodCompletion(ctx, cs, ns, pod.Name, cfg.Timeout); err != nil {
 		return failed(t, "wait fio pod completion", err, start), nil
 	}
 
-	// 5. Read logs + parse marker.
+	// 4. Read logs + parse marker.
 	logs, err := b.readLogs(ctx, ns, pod.Name)
 	if err != nil {
 		return failed(t, "read fio logs", err, start), nil
@@ -181,18 +179,6 @@ func failed(t benches.Task, stage string, err error, start time.Time) runresult.
 		Errors:   []string{stage + ": " + err.Error()},
 		Duration: time.Since(start),
 	}
-}
-
-func waitForPVCBound(ctx context.Context, cs kubernetes.Interface, ns, name string, timeout time.Duration) error {
-	tctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	return wait.PollUntilContextCancel(tctx, 500*time.Millisecond, true, func(ctx context.Context) (bool, error) {
-		pvc, err := cs.CoreV1().PersistentVolumeClaims(ns).Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
-			return false, nil
-		}
-		return pvc.Status.Phase == corev1.ClaimBound, nil
-	})
 }
 
 func waitForPodCompletion(ctx context.Context, cs kubernetes.Interface, ns, name string, timeout time.Duration) error {

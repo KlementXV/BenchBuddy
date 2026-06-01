@@ -7,7 +7,7 @@ import (
 )
 
 func TestPVCSpec(t *testing.T) {
-	pvc := PVC("run-1", "ns", "gp3", "1Gi")
+	pvc := PVC("run-1", "ns", "gp3", "randread", "4k", "1Gi")
 	if pvc.Spec.StorageClassName == nil || *pvc.Spec.StorageClassName != "gp3" {
 		t.Errorf("storage class name not set correctly: %v", pvc.Spec.StorageClassName)
 	}

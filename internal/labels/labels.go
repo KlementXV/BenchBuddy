@@ -37,6 +37,13 @@ func SelectorForRun(runID string) string {
 	return RunIDKey + "=" + runID
 }
 
+// SelectorForTask returns a label selector matching only the objects created
+// for a single task within a run. The task ID is sanitized the same way it is
+// when written to labels, so callers may pass the raw task ID.
+func SelectorForTask(runID, taskID string) string {
+	return RunIDKey + "=" + runID + "," + TaskKey + "=" + sanitizeForLabelValue(taskID)
+}
+
 // SelectorForAllRuns returns a label selector matching all BenchBuddy-created objects
 // regardless of run ID (i.e., any object that has the run-id label).
 func SelectorForAllRuns() string {

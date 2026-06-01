@@ -120,10 +120,10 @@ func Merge(in MergeInputs) (RunConfig, error) {
 
 func defaultImageConfig() ImageConfig {
 	return ImageConfig{
-		Registry: "ghcr.io/benchbuddy",
+		Registry: "ghcr.io/klementxv",
 		Runner: RunnerImage{
-			Repository: "runner",
-			Tag:        "v0.1.0",
+			Repository: "benchbuddy-runner",
+			Tag:        "latest",
 			PullPolicy: "IfNotPresent",
 		},
 	}
