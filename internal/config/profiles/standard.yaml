@@ -1,0 +1,24 @@
+name: standard
+parallelism: 3
+timeout: 15m
+benches:
+  network:
+    duration: 60s
+    protocols: [tcp, udp]
+    combinations: [same-node, cross-node]
+  storage:
+    duration: 90s
+    size: 10Gi
+    block_sizes: [4k, 64k, 1M]
+    patterns: [randread, randwrite, seqread, seqwrite]
+  dns:
+    duration: 60s
+    queries_per_second: 100
+    targets: [in-cluster]
+  api:
+    duration: 30s
+    operations: [list-pods, list-namespaces, get-pod, watch-pods]
+  pod:
+    sample_count: 20
+    pause_image: registry.k8s.io/pause:3.9
+    cpu_duration: 60s

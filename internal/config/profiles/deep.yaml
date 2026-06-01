@@ -1,0 +1,24 @@
+name: deep
+parallelism: 2
+timeout: 45m
+benches:
+  network:
+    duration: 5m
+    protocols: [tcp, udp]
+    combinations: [same-node, cross-node]
+  storage:
+    duration: 5m
+    size: 10Gi
+    block_sizes: [4k, 64k, 1M, 16M]
+    patterns: [randread, randwrite, seqread, seqwrite]
+  dns:
+    duration: 3m
+    queries_per_second: 200
+    targets: [in-cluster]
+  api:
+    duration: 2m
+    operations: [list-pods, list-namespaces, get-pod, watch-pods]
+  pod:
+    sample_count: 50
+    pause_image: registry.k8s.io/pause:3.9
+    cpu_duration: 3m

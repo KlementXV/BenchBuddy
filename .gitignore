@@ -1,0 +1,34 @@
+# binaries
+/benchbuddy
+/runner
+/dist/
+
+# generated launcher (produced by scripts/setup.sh)
+/benchbuddy-run.sh
+
+# test artifacts
+/tmp/
+*.test
+*.out
+coverage.txt
+
+# editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# kind state
+/.kind-state/
+
+# claude code per-user settings (absolute paths, tool allowlist)
+/.claude/
+
+# local kubeconfigs / credentials
+*.kubeconfig
+kubeconfig
+*.pem
+*.key
+id_rsa*
+.env
+.env.*

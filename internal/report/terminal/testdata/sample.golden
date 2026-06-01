@@ -1,0 +1,11 @@
+BenchBuddy Report
+  run:        01HXY3K
+  profile:    quick
+  namespace:  benchbuddy
+  cluster:    k8s=v1.30.0 cni=kindnet nodes=2
+  duration:   45s
+
+Results:
+  BENCH    SUBJECT                  STATUS  METRICS
+  network  node-1 (tcp, same-node)  OK      bandwidth_sent_gbps=9.10 Gbps
+  network  node-1 → node-2 (tcp)    OK      bandwidth_sent_gbps=4.20 Gbps
