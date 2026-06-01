@@ -31,6 +31,7 @@ type FlagOverrides struct {
 	RunnerImageRepo string
 	RunnerImageTag  string
 	RunnerDigest    string
+	PauseImage      string
 	PullSecrets     []string
 	PullPolicy      string
 }
@@ -113,6 +114,9 @@ func Merge(in MergeInputs) (RunConfig, error) {
 	}
 	if fl.PullPolicy != "" {
 		cfg.Images.Runner.PullPolicy = fl.PullPolicy
+	}
+	if fl.PauseImage != "" {
+		cfg.Benches.Pod.PauseImage = fl.PauseImage
 	}
 
 	return cfg, nil

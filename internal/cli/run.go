@@ -51,6 +51,7 @@ type runFlags struct {
 	registry        string
 	runnerImage     string
 	runnerDigest    string
+	pauseImage      string
 	imagePullSecret []string
 	imagePullPolicy string
 
@@ -84,6 +85,7 @@ func newRunCommand() *cobra.Command {
 	cmd.Flags().StringVar(&f.registry, "registry", "", "image registry base (overrides config)")
 	cmd.Flags().StringVar(&f.runnerImage, "runner-image", "", "runner image as repository:tag (overrides config)")
 	cmd.Flags().StringVar(&f.runnerDigest, "runner-digest", "", "runner image sha256 digest (overrides config)")
+	cmd.Flags().StringVar(&f.pauseImage, "pause-image", "", "pause image used by the pod-startup bench (overrides config; useful in airgap)")
 	cmd.Flags().StringSliceVar(&f.imagePullSecret, "image-pull-secret", nil, "imagePullSecrets in target namespace")
 	cmd.Flags().StringVar(&f.imagePullPolicy, "image-pull-policy", "", "image pull policy (default IfNotPresent)")
 	cmd.Flags().StringArrayVar(&f.output, "output", nil, "extra output: json=path.json or md=report.md (repeatable)")
@@ -119,6 +121,7 @@ func runCmd(parent context.Context, stdout, stderr io.Writer, f runFlags) error 
 		PullSecrets:  f.imagePullSecret,
 		PullPolicy:   f.imagePullPolicy,
 		RunnerDigest: f.runnerDigest,
+		PauseImage:   f.pauseImage,
 	}
 	if f.parallelismSet {
 		overrides.Parallelism = &f.parallelism
@@ -253,6 +256,13 @@ func runCmd(parent context.Context, stdout, stderr io.Writer, f runFlags) error 
 		}
 	}
 
+	// 11b. If neither --output was passed, offer to save in $PWD.
+	if jsonPath == "" && mdPath == "" {
+		if err := offerSaveReport(stdout, report, f.yes); err != nil {
+			fmt.Fprintf(stderr, "warning: save prompt failed: %v\n", err)
+		}
+	}
+
 	// 12. Exit code 1 if any HIGH or CRITICAL finding.
 	for _, finding := range report.Findings {
 		if finding.Severity == runresult.SeverityHigh || finding.Severity == runresult.SeverityCritical {
@@ -308,6 +318,49 @@ func parseOutputs(flags []string) (jsonPath, mdPath string, err error) {
 		}
 	}
 	return
+}
+
+// offerSaveReport prompts the user to persist the report into $PWD when no
+// --output flag was provided. With --yes it saves silently.
+func offerSaveReport(stdout io.Writer, report runresult.Report, autoYes bool) error {
+	base := "benchbuddy-" + report.Meta.RunID
+	jsonPath := base + ".json"
+	mdPath := base + ".md"
+
+	save := autoYes
+	if !autoYes {
+		fmt.Fprintf(stdout, "\nSave report to %s and %s? [Y/n]: ", jsonPath, mdPath)
+		var ans string
+		_, _ = fmt.Fscanln(os.Stdin, &ans)
+		ans = strings.ToLower(strings.TrimSpace(ans))
+		save = ans == "" || ans == "y" || ans == "yes" || ans == "o" || ans == "oui"
+	}
+	if !save {
+		return nil
+	}
+
+	jf, err := os.Create(jsonPath)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", jsonPath, err)
+	}
+	if err := reportjson.Render(jf, report); err != nil {
+		jf.Close()
+		return err
+	}
+	jf.Close()
+
+	mf, err := os.Create(mdPath)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", mdPath, err)
+	}
+	if err := reportmd.Render(mf, report); err != nil {
+		mf.Close()
+		return err
+	}
+	mf.Close()
+
+	fmt.Fprintf(stdout, "✔ Saved %s and %s\n", jsonPath, mdPath)
+	return nil
 }
 
 // podLogReader returns a LogReader backed by the real clientset.

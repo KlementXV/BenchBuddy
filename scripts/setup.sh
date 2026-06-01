@@ -178,6 +178,13 @@ if prompt_yn "" "n"; then
     info "Digest pinned"
   fi
 
+  ask "Pause image full ref mirrored in your registry (e.g. registry.corp.internal/pause:3.9 — leave blank to keep default registry.k8s.io/pause:3.9)"
+  PAUSE_IMAGE="$(prompt "" "")"
+  if [[ -n "$PAUSE_IMAGE" ]]; then
+    add "--pause-image" "$PAUSE_IMAGE"
+    info "Pause image: $PAUSE_IMAGE"
+  fi
+
   ask "ImagePullSecret name in namespace '$NAMESPACE' (leave blank if none)"
   PULL_SECRET="$(prompt "" "")"
   if [[ -n "$PULL_SECRET" ]]; then

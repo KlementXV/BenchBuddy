@@ -15,5 +15,7 @@ func NewRootCommand() *cobra.Command {
 	cmd.AddCommand(newCleanCommand())
 	cmd.AddCommand(newListRunsCommand())
 	cmd.AddCommand(newImagesCommand())
+	cmd.AddCommand(newShowCommand())
+	cmd.AddCommand(newDiffCommand())
 	return cmd
 }
